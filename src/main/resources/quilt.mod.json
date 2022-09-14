@@ -2,10 +2,10 @@
 	"schema_version": 1,
 	"quilt_loader": {
 		"group": "com.dm.earth",
-		"id": "modid",
+		"id": "m24",
 		"version": "${version}",
 		"metadata": {
-			"name": "Mod Id",
+			"name": "Minecraft024",
 			"description": "A short description of your mod.",
 			"contributors": {
 				"DM Earth": "Owner"
@@ -13,11 +13,13 @@
 			"contact": {
 				"sources": "https://github.com/DM-Earth"
 			},
-			"icon": "assets/modid/icon.png"
+			"icon": "assets/m24/icon.png"
 		},
 		"intermediate_mappings": "net.fabricmc:intermediary",
 		"entrypoints": {
-			"init": "com.dm.earth.modid.Modid"
+			"events": [
+				"com.dm.earth.m24.CommandRegistry"
+			]
 		},
 		"depends": [
 			{
@@ -33,6 +35,5 @@
 				"versions": ">=1.18.2"
 			}
 		]
-	},
-	"mixin": "modid.mixins.json"
+	}
 }
