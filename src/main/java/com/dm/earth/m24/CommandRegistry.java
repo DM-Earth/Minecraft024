@@ -4,7 +4,6 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.network.MessageType;
-import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.LiteralText;
 import net.objecthunter.exp4j.Expression;
@@ -28,10 +27,11 @@ public class CommandRegistry implements CommandRegistrationCallback {
 		return "[" + Point24.getNumber(Args24.A) + "] " + "[" + Point24.getNumber(Args24.B) + "] " + "[" + Point24.getNumber(Args24.C) + "] " + "[" + Point24.getNumber(Args24.D) + "]";
 	}
 
-	private static void genNumbers(ServerCommandSource src) throws CommandSyntaxException {
+	private static void genNumbers(ServerCommandSource src, boolean broadcast24) throws CommandSyntaxException {
 		Point24.genNumbers();
-		String output = "请用 " + genNumsStr() + " 组成结果为24的算式，以'" + Point24.PREFIX + " '开头验证";
-		src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("24点"), MessageType.CHAT, src.getPlayer().getUuid());
+		String output = "Please use " + genNumsStr() + " to construct a equation that results 24. Please use '" + Point24.PREFIX + " ' as verification at the start of the equation.";
+		if (broadcast24)
+			src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("<" + src.getPlayer().getEntityName() + "> " + "24 Points"), MessageType.CHAT, src.getPlayer().getUuid());
 		src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText(output), MessageType.SYSTEM, src.getPlayer().getUuid());
 	}
 
@@ -42,11 +42,11 @@ public class CommandRegistry implements CommandRegistrationCallback {
 						.requires(arg -> arg.hasPermissionLevel(1))
 						.executes(crx -> {
 							ServerCommandSource src = crx.getSource();
-							genNumbers(src);
+							genNumbers(src, true);
 							return 1;
 						})
 				)
-				.then(literal(Point24.PREFIX).then(argument("equation", StringArgumentType.string())
+				.then(literal(Point24.PREFIX).then(argument("equation", StringArgumentType.greedyString())
 						.requires(arg -> arg.hasPermissionLevel(0))
 						.executes(crx -> {
 							if (Point24.getNumber(Args24.A) == 0) return 0;
@@ -63,10 +63,10 @@ public class CommandRegistry implements CommandRegistrationCallback {
 									.replace('＜', '<')
 									.replace('＞', '>');
 
-							src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("=" + equation), MessageType.CHAT, src.getPlayer().getUuid());
+							src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("<" + src.getPlayer().getEntityName() + "> " + Point24.PREFIX + " " + equation), MessageType.CHAT, src.getPlayer().getUuid());
 
 							if (equation.contains("%")) {
-								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("禁止使用%运算符"), MessageType.SYSTEM, src.getPlayer().getUuid());
+								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("% Operators are disabled."), MessageType.SYSTEM, src.getPlayer().getUuid());
 								return 1;
 							}
 							Expression expression = new ExpressionBuilder(equation)
@@ -103,11 +103,13 @@ public class CommandRegistry implements CommandRegistrationCallback {
 									double value = ((NumberToken) token).getValue();
 									int i = 0;
 									while (i < nums.size()) {
-										if ((double) nums.get(i) == value && nums.get(i) != 0) break; else ++i;
+										if ((double) nums.get(i) == value && nums.get(i) != 0) break;
+										else ++i;
 									}
-									if (i < nums.size()) nums.remove(i); else usedAll = false;
+									if (i < nums.size()) nums.remove(i);
+									else usedAll = false;
 								} else if (token.getType() == (int) Token.TOKEN_FUNCTION) {
-									src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("禁止函数哦"), MessageType.SYSTEM, src.getPlayer().getUuid());
+									src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("Math functions are disabled."), MessageType.SYSTEM, src.getPlayer().getUuid());
 									return 1;
 								}
 							}
@@ -116,11 +118,15 @@ public class CommandRegistry implements CommandRegistrationCallback {
 
 							double result = expression.evaluate();
 							if (!usedAll) {
-								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("结果为" + result + "，请使用系统生成的数值！"), MessageType.SYSTEM, src.getPlayer().getUuid());
+								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("The result is " + result + ", please use the numbers provided by the game!"), MessageType.SYSTEM, src.getPlayer().getUuid());
 								return 1;
 							}
-							src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("恭喜你，答对了！"), MessageType.SYSTEM, src.getPlayer().getUuid());
-							genNumbers(src);
+							if (result == Point24.FINALE) {
+								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("Congratulations!"), MessageType.SYSTEM, src.getPlayer().getUuid());
+								genNumbers(src, false);
+							} else {
+								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("The result is " + result + ", please make it be 24!"), MessageType.SYSTEM, src.getPlayer().getUuid());
+							}
 							return 1;
 						})
 				))

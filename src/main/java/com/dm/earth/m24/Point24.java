@@ -8,7 +8,6 @@ import java.util.Random;
 
 public class Point24 {
 	public static final String MODID = "modid";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
 
 	public static final String PREFIX = "answer";
 	public static final int FINALE = 24;
