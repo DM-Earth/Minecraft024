@@ -3,9 +3,11 @@ package com.dm.earth.m24;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.minecraft.network.MessageType;
+import net.minecraft.command.CommandBuildContext;
+import net.minecraft.server.PlayerManager;
+import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.text.LiteralText;
+import net.minecraft.text.Text;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
 import net.objecthunter.exp4j.operator.Operator;
@@ -27,16 +29,24 @@ public class CommandRegistry implements CommandRegistrationCallback {
 		return "[" + Point24.getNumber(Args24.A) + "] " + "[" + Point24.getNumber(Args24.B) + "] " + "[" + Point24.getNumber(Args24.C) + "] " + "[" + Point24.getNumber(Args24.D) + "]";
 	}
 
+	private static void broadcastChatMessage(ServerCommandSource src, String text) {
+		PlayerManager playerManager = src.getServer().getPlayerManager();
+		playerManager.method_43514(Text.literal(text), true);
+	}
+
+	private static void broadcastChatMessage(String text, ServerCommandSource src) {
+		broadcastChatMessage(src, text);
+	}
+
 	private static void genNumbers(ServerCommandSource src, boolean broadcast24) throws CommandSyntaxException {
 		Point24.genNumbers();
 		String output = "Please use " + genNumsStr() + " to construct a equation that results 24. Please use '" + Point24.PREFIX + " ' as verification at the start of the equation.";
-		if (broadcast24)
-			src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("<" + src.getPlayer().getEntityName() + "> " + "24 Points"), MessageType.CHAT, src.getPlayer().getUuid());
-		src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText(output), MessageType.SYSTEM, src.getPlayer().getUuid());
+		if (broadcast24) broadcastChatMessage(src, "<" + src.getPlayer().getEntityName() + "> " + "24 Points");
+		broadcastChatMessage(src, output);
 	}
 
 	@Override
-	public void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher, boolean integrated, boolean dedicated) {
+	public void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher, CommandBuildContext buildContext, CommandManager.RegistrationEnvironment environment) {
 		dispatcher.register(literal("m24")
 				.then(literal("new")
 						.requires(arg -> arg.hasPermissionLevel(1))
@@ -63,10 +73,10 @@ public class CommandRegistry implements CommandRegistrationCallback {
 									.replace('＜', '<')
 									.replace('＞', '>');
 
-							src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("<" + src.getPlayer().getEntityName() + "> " + Point24.PREFIX + " " + equation), MessageType.CHAT, src.getPlayer().getUuid());
+							broadcastChatMessage(src, "<" + src.getPlayer().getEntityName() + "> " + Point24.PREFIX + " " + equation);
 
 							if (equation.contains("%")) {
-								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("% Operators are disabled."), MessageType.SYSTEM, src.getPlayer().getUuid());
+								broadcastChatMessage("% Operators are disabled.", src);
 								return 1;
 							}
 							Expression expression = new ExpressionBuilder(equation)
@@ -109,7 +119,7 @@ public class CommandRegistry implements CommandRegistrationCallback {
 									if (i < nums.size()) nums.remove(i);
 									else usedAll = false;
 								} else if (token.getType() == (int) Token.TOKEN_FUNCTION) {
-									src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("Math functions are disabled."), MessageType.SYSTEM, src.getPlayer().getUuid());
+									broadcastChatMessage("Math functions are disabled.", src);
 									return 1;
 								}
 							}
@@ -118,14 +128,14 @@ public class CommandRegistry implements CommandRegistrationCallback {
 
 							double result = expression.evaluate();
 							if (!usedAll) {
-								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("The result is " + result + ", please use the numbers provided by the game!"), MessageType.SYSTEM, src.getPlayer().getUuid());
+								broadcastChatMessage("The result is " + result + ", please use the numbers provided by the game!", src);
 								return 1;
 							}
 							if (result == Point24.FINALE) {
-								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("Congratulations!"), MessageType.SYSTEM, src.getPlayer().getUuid());
+								broadcastChatMessage("Congratulations!", src);
 								genNumbers(src, false);
 							} else {
-								src.getServer().getPlayerManager().broadcastChatMessage(new LiteralText("The result is " + result + ", please make it be 24!"), MessageType.SYSTEM, src.getPlayer().getUuid());
+								broadcastChatMessage("The result is " + result + ", please make it be 24!", src);
 							}
 							return 1;
 						})
